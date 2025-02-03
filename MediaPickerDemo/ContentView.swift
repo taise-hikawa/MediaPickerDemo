@@ -8,16 +8,63 @@
 import SwiftUI
 
 struct ContentView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+    private enum Sheet: Identifiable {
+        case videos
+        case imagesAndVideos
+        case image
+        var id: String {
+            switch self {
+            case .videos:
+                return "videos"
+            case .imagesAndVideos:
+                return "imagesAndVideos"
+            case .image:
+                return "image"
+            }
         }
-        .padding()
+    }
+
+    @State private var selectedSheet: Sheet?
+    var body: some View {
+        VStack(spacing: 24) {
+            Button {
+                selectedSheet = .videos
+            } label: {
+                Text("動画複数選択")
+            }
+
+            Button {
+                selectedSheet = .imagesAndVideos
+            } label: {
+                Text("画像&動画複数選択")
+            }
+
+            Button {
+                selectedSheet = .image
+            } label: {
+                Text("画像単数選択")
+            }
+        }
+        .buttonStyle(.bordered)
+        .sheet(item: $selectedSheet) { sheet in
+            switch sheet {
+            case .videos:
+                PHPPickerWrapper(selectionLimit: 5, filter: .videos) { results in
+                    print(results)
+                }
+            case .imagesAndVideos:
+                PHPPickerWrapper(selectionLimit: 5) { results in
+                    print(results)
+                }
+            case .image:
+                PHPPickerWrapper(selectionLimit: 1, filter: .images) { results in
+                    print(results)
+                }
+            }
+        }
     }
 }
+
 
 #Preview {
     ContentView()
