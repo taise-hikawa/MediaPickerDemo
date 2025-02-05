@@ -8,7 +8,7 @@
 import UIKit
 import UniformTypeIdentifiers
 
-enum PickerError: Error {
+enum MediaConvertError: Error {
     case missingImage
     case missingVideo
     case imageFileTooLarge
@@ -17,12 +17,12 @@ enum PickerError: Error {
     case unknown
 }
 
-enum PickerContent {
+enum MediaContent {
     case image(UIImage)
     case video(URL)
 }
 
-class PHPickerResultConverter {
+class MediaItemConverter {
     private static let maxImageFileSize: UInt64 = 50 * 1024 * 1024
     private static let maxVideoFileSize: UInt64 = 100 * 1024 * 1024
     private static let allowedExtensions = ["jpg", "jpeg", "gif", "png", "heic"]
@@ -30,7 +30,7 @@ class PHPickerResultConverter {
     static func convertToUIImage(from itemProvider: NSItemProvider) async throws -> UIImage {
         let imageType = UTType.image.identifier
         guard itemProvider.hasItemConformingToTypeIdentifier(imageType) else {
-            throw PickerError.missingImage
+            throw MediaConvertError.missingImage
         }
         let fileURL: URL = try await withCheckedThrowingContinuation { continuation in
             itemProvider.loadFileRepresentation(forTypeIdentifier: imageType) { temporaryURL, error in
@@ -43,23 +43,23 @@ class PHPickerResultConverter {
                     try! FileManager.default.copyItem(at: temporaryURL, to: destination)
                     continuation.resume(returning: destination)
                 } else {
-                    continuation.resume(throwing: PickerError.missingImage)
+                    continuation.resume(throwing: MediaConvertError.missingImage)
                 }
             }
         }
         let ext = fileURL.pathExtension.lowercased()
         if !allowedExtensions.contains(ext) {
-            throw PickerError.unsupportedImageExtension
+            throw MediaConvertError.unsupportedImageExtension
         }
         let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
         if let fileSize = attributes[.size] as? UInt64, fileSize > maxImageFileSize {
-            throw PickerError.imageFileTooLarge
+            throw MediaConvertError.imageFileTooLarge
         }
 
         // TODO: file size calculatorを使う
         let data = try Data(contentsOf: fileURL)
         guard let image = UIImage(data: data) else {
-            throw PickerError.missingImage
+            throw MediaConvertError.missingImage
         }
         return image
     }
@@ -67,7 +67,7 @@ class PHPickerResultConverter {
     static func convertToURL(from itemProvider: NSItemProvider) async throws -> URL {
         let movieType = UTType.movie.identifier
         guard itemProvider.hasItemConformingToTypeIdentifier(movieType) else {
-            throw PickerError.missingVideo
+            throw MediaConvertError.missingVideo
         }
         let fileURL: URL = try await withCheckedThrowingContinuation { continuation in
             itemProvider.loadFileRepresentation(forTypeIdentifier: movieType) { temporaryURL, error in
@@ -80,20 +80,20 @@ class PHPickerResultConverter {
                     try! FileManager.default.copyItem(at: temporaryURL, to: destination)
                     continuation.resume(returning: destination)
                 } else {
-                    continuation.resume(throwing: PickerError.missingVideo)
+                    continuation.resume(throwing: MediaConvertError.missingVideo)
                 }
             }
         }
         // TODO: use file size calculator
         let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
         if let fileSize = attributes[.size] as? UInt64, fileSize > maxVideoFileSize {
-            throw PickerError.videoFileTooLarge
+            throw MediaConvertError.videoFileTooLarge
         }
         return fileURL
     }
 
 
-    static func convert(from itemProvider: NSItemProvider) async throws -> PickerContent {
+    static func convert(from itemProvider: NSItemProvider) async throws -> MediaContent {
         if itemProvider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
             let videoURL = try await convertToURL(from: itemProvider)
             return .video(videoURL)
@@ -101,6 +101,6 @@ class PHPickerResultConverter {
             let image = try await convertToUIImage(from: itemProvider)
             return .image(image)
         }
-        throw PickerError.unknown
+        throw MediaConvertError.unknown
     }
 }

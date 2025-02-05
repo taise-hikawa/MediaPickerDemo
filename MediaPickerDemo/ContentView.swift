@@ -81,7 +81,7 @@ extension ContentView {
             for (index, result) in results.enumerated() {
                 group.addTask {
                     do {
-                        let url = try await PHPickerResultConverter.convertToURL(from: result.itemProvider)
+                        let url = try await MediaItemConverter.convertToURL(from: result.itemProvider)
                         return (index, .success(url))
                     } catch {
                         return (index, .failure(error))
@@ -107,7 +107,7 @@ extension ContentView {
     private func handleSerial(results: [PHPickerResult]) async {
         for result in results {
             do {
-                let url = try await PHPickerResultConverter.convertToURL(from: result.itemProvider)
+                let url = try await MediaItemConverter.convertToURL(from: result.itemProvider)
                 print(url)
             } catch {
                 print("🍎", error)
