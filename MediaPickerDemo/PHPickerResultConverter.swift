@@ -6,7 +6,7 @@
 //
 
 import UIKit
-import PhotosUI
+import UniformTypeIdentifiers
 
 enum PickerError: Error {
     case missingImage
@@ -27,13 +27,13 @@ class PHPickerResultConverter {
     private static let maxVideoFileSize: UInt64 = 100 * 1024 * 1024
     private static let allowedExtensions = ["jpg", "jpeg", "gif", "png", "heic"]
 
-    static func convertToUIImage(from result: PHPickerResult) async throws -> UIImage {
+    static func convertToUIImage(from itemProvider: NSItemProvider) async throws -> UIImage {
         let imageType = UTType.image.identifier
-        guard result.itemProvider.hasItemConformingToTypeIdentifier(imageType) else {
+        guard itemProvider.hasItemConformingToTypeIdentifier(imageType) else {
             throw PickerError.missingImage
         }
         let fileURL: URL = try await withCheckedThrowingContinuation { continuation in
-            result.itemProvider.loadFileRepresentation(forTypeIdentifier: imageType) { temporaryURL, error in
+            itemProvider.loadFileRepresentation(forTypeIdentifier: imageType) { temporaryURL, error in
                 if let error = error {
                     continuation.resume(throwing: error)
                 } else if let temporaryURL {
@@ -64,13 +64,13 @@ class PHPickerResultConverter {
         return image
     }
 
-    static func convertToURL(from result: PHPickerResult) async throws -> URL {
+    static func convertToURL(from itemProvider: NSItemProvider) async throws -> URL {
         let movieType = UTType.movie.identifier
-        guard result.itemProvider.hasItemConformingToTypeIdentifier(movieType) else {
+        guard itemProvider.hasItemConformingToTypeIdentifier(movieType) else {
             throw PickerError.missingVideo
         }
         let fileURL: URL = try await withCheckedThrowingContinuation { continuation in
-            result.itemProvider.loadFileRepresentation(forTypeIdentifier: movieType) { temporaryURL, error in
+            itemProvider.loadFileRepresentation(forTypeIdentifier: movieType) { temporaryURL, error in
                 if let error = error {
                     continuation.resume(throwing: error)
                 } else if let temporaryURL {
@@ -93,12 +93,12 @@ class PHPickerResultConverter {
     }
 
 
-    static func convert(from result: PHPickerResult) async throws -> PickerContent {
-        if result.itemProvider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
-            let videoURL = try await convertToURL(from: result)
+    static func convert(from itemProvider: NSItemProvider) async throws -> PickerContent {
+        if itemProvider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
+            let videoURL = try await convertToURL(from: itemProvider)
             return .video(videoURL)
-        } else if result.itemProvider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
-            let image = try await convertToUIImage(from: result)
+        } else if itemProvider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+            let image = try await convertToUIImage(from: itemProvider)
             return .image(image)
         }
         throw PickerError.unknown
