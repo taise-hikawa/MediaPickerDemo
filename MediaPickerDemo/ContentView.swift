@@ -104,7 +104,7 @@ extension ContentView {
         print("Errors: \(errors)")
     }
 
-    private func handleSync(results: [PHPickerResult]) async {
+    private func handleSerial(results: [PHPickerResult]) async {
         for result in results {
             do {
                 let url = try await PHPickerResultConverter.convertToURL(from: result.itemProvider)
