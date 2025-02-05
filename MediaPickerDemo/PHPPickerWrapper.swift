@@ -25,6 +25,7 @@ struct PHPPickerWrapper: UIViewControllerRepresentable {
         if let filter {
             configuration.filter = filter
         }
+        configuration.preferredAssetRepresentationMode = .current
         configuration.selectionLimit = selectionLimit
         let picker = PHPickerViewController(configuration: configuration)
         picker.delegate = context.coordinator

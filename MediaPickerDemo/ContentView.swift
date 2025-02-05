@@ -4,8 +4,10 @@
 //
 //  Created by 樋川大聖 on 2025/02/03.
 //
-
+import Foundation
 import SwiftUI
+import UniformTypeIdentifiers
+import PhotosUI
 
 struct ContentView: View {
     private enum Sheet: Identifiable {
@@ -49,8 +51,12 @@ struct ContentView: View {
         .sheet(item: $selectedSheet) { sheet in
             switch sheet {
             case .videos:
-                PHPPickerWrapper(selectionLimit: 5, filter: .videos) { results in
-                    print(results)
+                PHPPickerWrapper(selectionLimit: 100, filter: .videos) { results in
+                    Task {
+                        let start = Date()
+                        await handle(results: results)
+                        print("Time: \(Date().timeIntervalSince(start))")
+                    }
                 }
             case .imagesAndVideos:
                 PHPPickerWrapper(selectionLimit: 5) { results in
@@ -58,14 +64,60 @@ struct ContentView: View {
                 }
             case .image:
                 PHPPickerWrapper(selectionLimit: 1, filter: .images) { results in
-                    print(results)
+                    guard let result = results.first else { return }
+                    print(result)
                 }
             }
         }
     }
 }
 
+extension ContentView {
+    private func handle(results: [PHPickerResult]) async {
+        var urls = [URL]()
+        var errors = [Error]()
+
+        await withTaskGroup(of: (Int, Result<URL, Error>).self) { group in
+            for (index, result) in results.enumerated() {
+                group.addTask {
+                    do {
+                        let url = try await PHPickerResultConverter.convertToURL(from: result)
+                        return (index, .success(url))
+                    } catch {
+                        return (index, .failure(error))
+                    }
+                }
+            }
+            for await (index, conversionResult) in group {
+                switch conversionResult {
+                case .success(let url):
+                    print(url)
+                    urls.append(url)
+                case .failure(let error):
+                    errors.append(error)
+                }
+                print("\(index)/ \(results.count)")
+            }
+        }
+
+        print("URLs: \(urls)")
+        print("Errors: \(errors)")
+    }
+
+    private func handleSync(results: [PHPickerResult]) async {
+        for result in results {
+            do {
+                let url = try await PHPickerResultConverter.convertToURL(from: result)
+                print(url)
+            } catch {
+                print("🍎", error)
+            }
+        }
+    }
+}
 
 #Preview {
     ContentView()
 }
+
+extension PHPickerResult: @unchecked @retroactive Sendable {}
